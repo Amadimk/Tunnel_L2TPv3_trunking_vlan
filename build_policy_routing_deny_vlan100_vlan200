@@ -1,0 +1,20 @@
+#!/bin/bash
+#on ajoute de table de routage pour rout1 et rout2 en editant le fichier /etc/iproute2/rt_tables : vlan100 et vlan200
+
+#rout1
+ip netns exec rout1 ip rule add from 192.168.100.0/24 lookup vlan100
+ip netns exec rout1 ip rule add from 192.168.200.0/24 lookup vlan200
+
+#rout2
+ip netns exec rout2 ip rule add from 192.168.100.0/24 lookup vlan100
+ip netns exec rout2 ip rule add from 192.168.200.0/24 lookup vlan200
+
+# Ici nous avons preferez une interdiction administrative de communication entre les 2 vlans : prohibit 
+
+#rout1
+ip netns exec rout1 ip route add prohibit 192.168.200.0/24 table vlan100
+ip netns exec rout1 ip route add prohibit 192.168.100.0/24 table vlan200
+
+#rout2
+ip netns exec rout2 ip route add prohibit 192.168.200.0/24 table vlan100
+ip netns exec rout2 ip route add prohibit 192.168.100.0/24 table vlan200

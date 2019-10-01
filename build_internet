@@ -1,0 +1,20 @@
+#!/bin/bash
+
+sysctl net.ipv4.conf.all.forwarding=1
+ip link set internet up
+ip a add dev internet 10.87.0.253/24
+iptables -t nat -A POSTROUTING -s 10.87.0.0/24 -j MASQUERADE
+ip netns exec routA ip r add default via 10.87.0.253 dev routA-eth1
+ip netns exec routA ip r add 192.168.100.0/24 via 172.16.1.253 dev routA-eth0
+ip netns exec routA ip r add 192.168.200.0/24 via 172.16.1.253 dev routA-eth0
+ip netns exec routA iptables -t nat -A POSTROUTING -s 172.16.1.0/24 -j MASQUERADE
+ip netns exec routA iptables -t nat -A POSTROUTING -s 192.168.100.0/24 -j MASQUERADE
+ip netns exec routA iptables -t nat -A POSTROUTING -s 192.168.200.0/24 -j MASQUERADE
+
+ip netns exec routB ip r add default via 10.87.0.253 dev routB-eth1
+ip netns exec routB ip r add 192.168.100.0/24 via 172.16.2.253 dev routB-eth0
+ip netns exec routB ip r add 192.168.200.0/24 via 172.16.2.253 dev routB-eth0
+ip netns exec routB iptables -t nat -A POSTROUTING -s 172.16.2.0/24 -j MASQUERADE
+ip netns exec routB iptables -t nat -A POSTROUTING -s 192.168.100.0/24 -j MASQUERADE
+ip netns exec routB iptables -t nat -A POSTROUTING -s 192.168.200.0/24 -j MASQUERADE
+

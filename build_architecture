@@ -1,0 +1,141 @@
+#!/bin/bash
+
+export PATH=/usr/lib/quagga:$PATH
+
+# graphe : INFRA RIP OSPF LAB
+
+# créer les différents namespaces
+ip netns add poste1
+ip netns add poste2
+ip netns add poste3
+ip netns add poste4
+ip netns add routA
+ip netns add rout1
+ip netns add rout2
+ip netns add routB
+
+# créer les switches
+ovs-vsctl add-br resE
+ovs-vsctl add-br resB
+ovs-vsctl add-br resC
+ovs-vsctl add-br resD
+ovs-vsctl add-br internet
+
+# créer le répertoire de travail
+mkdir -p /run/quagga
+
+# configurer poste1
+ip link add poste1-eth0 type veth peer name resE-poste1
+ip link set poste1-eth0 netns poste1
+ovs-vsctl add-port resE resE-poste1
+ip link set dev resE-poste1 up
+ip netns exec poste1 ip link set dev lo up
+ip netns exec poste1 ip link set dev poste1-eth0 up
+
+
+# configurer poste2
+ip link add poste2-eth0 type veth peer name resE-poste2
+ip link set poste2-eth0 netns poste2
+ovs-vsctl add-port resE resE-poste2
+ip link set dev resE-poste2 up
+ip netns exec poste2 ip link set dev lo up
+ip netns exec poste2 ip link set dev poste2-eth0 up
+
+# configurer poste3
+ip link add poste3-eth0 type veth peer name resD-poste3
+ip link set poste3-eth0 netns poste3
+ovs-vsctl add-port resD resD-poste3
+ip link set dev resD-poste3 up
+ip netns exec poste3 ip link set dev lo up
+ip netns exec poste3 ip link set dev poste3-eth0 up
+
+
+# configurer poste4
+ip link add poste4-eth0 type veth peer name resD-poste4
+ip link set poste4-eth0 netns poste4
+ovs-vsctl add-port resD resD-poste4
+ip link set dev resD-poste4 up
+ip netns exec poste4 ip link set dev lo up
+ip netns exec poste4 ip link set dev poste4-eth0 up
+
+
+# configurer rout1
+ip link add rout1-eth0 type veth peer name resC-rout1
+ip link add rout1-eth1 type veth peer name resD-rout1
+ip link set rout1-eth0 netns rout1
+ip link set rout1-eth1 netns rout1
+ovs-vsctl add-port resC resC-rout1
+ip link set dev resC-rout1 up
+ovs-vsctl add-port resD resD-rout1
+ip link set dev resD-rout1 up
+ip netns exec rout1 ip link set dev lo up
+ip netns exec rout1 ip link set dev rout1-eth0 up
+ip netns exec rout1 ip link set dev rout1-eth1 up
+ip netns exec rout1 ip a add dev rout1-eth0 172.16.1.253/24
+ip netns exec rout1 ip r add default via 172.16.1.254 dev rout1-eth0
+ip netns exec rout1 sysctl net.ipv4.conf.all.forwarding=1
+# mkdir -p /tmp/quagga1
+# ip netns exec rout1 bash -c "mount --bind /tmp/quagga1 /run/quagga; chown -R quagga:quagga /run/quagga;zebra -d;ripd -d"
+
+
+# configurer rout2
+ip link add rout2-eth0 type veth peer name resB-rout2
+ip link add rout2-eth1 type veth peer name resE-rout2
+ip link set rout2-eth0 netns rout2
+ip link set rout2-eth1 netns rout2
+ovs-vsctl add-port resB resB-rout2
+ip link set dev resB-rout2 up
+ovs-vsctl add-port resE resE-rout2
+ip link set dev resE-rout2 up
+ip netns exec rout2 ip link set dev lo up
+ip netns exec rout2 ip link set dev rout2-eth0 up
+ip netns exec rout2 ip link set dev rout2-eth1 up
+ip netns exec rout2 ip a add dev rout2-eth0 172.16.2.253/24
+ip netns exec rout2 ip r add default via 172.16.2.254 dev rout2-eth0
+ip netns exec rout2 sysctl net.ipv4.conf.all.forwarding=1
+# mkdir -p /tmp/quagga2
+# ip netns exec rout2 bash -c "mount --bind /tmp/quagga2 /run/quagga; chown -R quagga:quagga /run/quagga;zebra -d;ripd -d"
+
+
+# configurer routA
+ip link add routA-eth0 type veth peer name resC-routA
+ip link add routA-eth1 type veth peer name internet-routA
+ip link set routA-eth0 netns routA
+ip link set routA-eth1 netns routA
+ovs-vsctl add-port resC resC-routA
+ip link set dev resC-routA up
+ovs-vsctl add-port internet internet-routA
+ip link set dev internet-routA up
+ip netns exec routA ip link set dev lo up
+ip netns exec routA ip link set dev routA-eth0 up
+ip netns exec routA ip link set dev routA-eth1 up
+ip netns exec routA ip a add dev routA-eth0 172.16.1.254/24
+ip netns exec routA ip a add dev routA-eth1 10.87.0.1/24
+ip netns exec routA sysctl net.ipv4.conf.all.forwarding=1
+mkdir -p /tmp/quagga3
+ip netns exec routA bash -c "mount --bind /tmp/quagga3 /run/quagga; chown -R quagga:quagga /run/quagga;zebra -d;ripd -d"
+
+
+# configurer routB
+ip link add routB-eth0 type veth peer name resB-routB
+ip link add routB-eth1 type veth peer name internet-routB
+ip link set routB-eth0 netns routB
+ip link set routB-eth1 netns routB
+ovs-vsctl add-port resB resB-routB
+ip link set dev resB-routB up
+ovs-vsctl add-port internet internet-routB
+ip link set dev internet-routB up
+ip netns exec routB ip link set dev lo up
+ip netns exec routB ip link set dev routB-eth0 up
+ip netns exec routB ip link set dev routB-eth1 up
+ip netns exec routB ip a add dev routB-eth0 172.16.2.254/24
+ip netns exec routB ip a add dev routB-eth1 10.87.0.2/24
+ip netns exec routB sysctl net.ipv4.conf.all.forwarding=1
+mkdir -p /tmp/quagga4
+ip netns exec routB bash -c "mount --bind /tmp/quagga4 /run/quagga; chown -R quagga:quagga /run/quagga;zebra -d;ripd -d"
+
+# #configuration du routage manuelle si on dispose pas de rip ou ospf pour les routeurs A et B
+# ip netns exec routB ip r add 172.16.1.0/24 via 10.87.0.1 dev routB-eth1
+# ip netns exec routA ip r add 172.16.2.0/24 via 10.87.0.2  dev routA-eth1
+# ip netns exec rout2 ip r add 172.16.1.0/24 via 172.16.2.254 dev rout2-eth0
+# ip netns exec rout1 ip r add 172.16.2.0/24 via 172.16.1.254 dev rout1-eth0

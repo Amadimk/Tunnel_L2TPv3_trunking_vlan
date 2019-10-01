@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# # configuration des vlans dans rout1
+ip netns exec rout1 ip link add link rout1-eth1 name rout1-eth1.100 type vlan id 100
+ip netns exec rout1 ip link add link rout1-eth1 name rout1-eth1.200 type vlan id 200
+ip netns exec rout1 ip link set dev rout1-eth1.100 up
+ip netns exec rout1 ip link set dev rout1-eth1.200 up
+ip netns exec rout1 ip addr add 192.168.100.254/24 dev rout1-eth1.100
+ip netns exec rout1 ip addr add 192.168.200.254/24 dev rout1-eth1.200
+
+#lancement du dhcp:
+ip netns exec rout1 dnsmasq -d -z -i rout1-eth1.100 --except-interface=lo -F 192.168.100.0,192.168.100.200,255.255.255.0 &
+clear
+ip netns exec rout1 dnsmasq -d -z -i rout1-eth1.200 --except-interface=lo -F 192.168.200.0,192.168.200.200,255.255.255.0 &
+clear
+
+
+# configuration des vlans dans rout2
+ip netns exec rout2 ip link add link rout2-eth1 name rout2-eth1.100 type vlan id 100
+ip netns exec rout2 ip link add link rout2-eth1 name rout2-eth1.200 type vlan id 200
+ip netns exec rout2 ip link set dev rout2-eth1.100 up
+ip netns exec rout2 ip link set dev rout2-eth1.200 up
+ip netns exec rout2 ip addr add 192.168.100.253/24 dev rout2-eth1.100
+ip netns exec rout2 ip addr add 192.168.200.253/24 dev rout2-eth1.200
+
+# # configuration des vlans dans poste1
+ip netns exec poste1 ip link add link poste1-eth0 name poste1-eth0.100 type vlan id 100
+ip netns exec poste1 ip link set dev poste1-eth0.100 up
+#ip netns exec poste1 ip addr add 192.168.100.1/24 brd 192.168.100.255 dev poste1-eth0.100
+
+
+# # # configuration des vlans dans poste2
+ip netns exec poste2 ip link add link poste2-eth0 name poste2-eth0.200 type vlan id 200
+ip netns exec poste2 ip link set dev poste2-eth0.200 up
+#ip netns exec poste2 ip addr add 192.168.200.1/24 brd 192.168.200.255 dev poste2-eth0.200
+
+
+# # # configuration des vlans dans poste3
+ip netns exec poste3 ip link add link poste3-eth0 name poste3-eth0.100 type vlan id 100
+ip netns exec poste3 ip link set dev poste3-eth0.100 up
+#ip netns exec poste3 dhclient poste3-eth0.100 &
+
+#ip netns exec poste3 ip r del 192.168.100.0/24 dev poste3-eth0 proto kernel scope link src 192.168.100.1
+
+# # # configuration des vlans dans poste3
+ip netns exec poste4 ip link add link poste4-eth0 name poste4-eth0.200 type vlan id 200
+ip netns exec poste4 ip link set dev poste4-eth0.200 up
+#ip netns exec poste4 dhclient poste4-eth0.200 &
+
+#ip netns exec poste4 ip addr add 192.168.200.1/24 brd 192.168.200.255 dev poste4-eth0.200
+#ip netns exec poste4 ip r del 192.168.200.0/24 dev poste4-eth0 proto kernel scope link src 192.168.200.1

@@ -1,0 +1,55 @@
+#!/bin/bash
+ip netns exec rout1 ip l2tp add tunnel remote 172.16.2.253 local 172.16.1.253 encap udp udp_sport 2093  udp_dport 2094 tunnel_id 3000 peer_tunnel_id 4000
+ip netns exec rout1 ip l2tp add session tunnel_id 3000 session_id 1000 peer_session_id 2000
+ip netns exec rout1 ip link set l2tpeth0 up
+ip netns exec rout1 brctl addbr tunnel
+ip netns exec rout1 brctl addif tunnel l2tpeth0
+ip netns exec rout1 brctl addif tunnel rout1-eth1
+ip netns exec rout1 ip link set tunnel up
+ip netns exec rout1 ip link add link tunnel name tunnel.100 type vlan id 100
+ip netns exec rout1 ip link set tunnel.100 up
+ip netns exec rout1 ip link add link tunnel name tunnel.200 type vlan id 200
+ip netns exec rout1 ip link set tunnel.200 up
+ip netns exec rout1 ip addr add 192.168.100.254/24 dev tunnel.100
+ip netns exec rout1 ip addr add 192.168.200.254/24 dev tunnel.200
+
+ip netns exec rout2 ip l2tp add tunnel remote 172.16.1.253 local 172.16.2.253 encap udp udp_sport 2094  udp_dport 2093 tunnel_id 4000 peer_tunnel_id 3000
+ip netns exec rout2 ip l2tp add session tunnel_id 4000 session_id 2000 peer_session_id 1000
+ip netns exec rout2 ip link set l2tpeth0 up
+ip netns exec rout2 brctl addbr tunnel
+ip netns exec rout2 brctl addif tunnel l2tpeth0
+ip netns exec rout2 brctl addif tunnel rout2-eth1
+ip netns exec rout2 ip link set tunnel up
+ip netns exec rout2 ip link add link tunnel name tunnel.100 type vlan id 100
+ip netns exec rout2 ip link set tunnel.100 up
+ip netns exec rout2 ip link add link tunnel name tunnel.200 type vlan id 200
+ip netns exec rout2 ip link set tunnel.200 up
+ip netns exec rout2 ip addr add 192.168.100.253/24 dev tunnel.100
+ip netns exec rout2 ip addr add 192.168.200.253/24 dev tunnel.200
+
+# # configuration des vlans dans poste1
+ip netns exec poste1 ip link add link poste1-eth0 name poste1-eth0.100 type vlan id 100
+ip netns exec poste1 ip link set dev poste1-eth0.100 up
+
+ # # configuration des vlans dans poste2
+ip netns exec poste2 ip link add link poste2-eth0 name poste2-eth0.200 type vlan id 200
+ip netns exec poste2 ip link set dev poste2-eth0.200 up
+#ip netns exec poste2 ip addr add 192.168.200.1/24 brd 192.168.200.255 dev poste2-eth0.200
+
+
+# # # configuration des vlans dans poste3
+ip netns exec poste3 ip link add link poste3-eth0 name poste3-eth0.100 type vlan id 100
+ip netns exec poste3 ip link set dev poste3-eth0.100 up
+#ip netns exec poste3 dhclient poste3-eth0.100 &
+
+#ip netns exec poste3 ip r del 192.168.100.0/24 dev poste3-eth0 proto kernel scope link src 192.168.100.1
+
+# # # configuration des vlans dans poste3
+ip netns exec poste4 ip link add link poste4-eth0 name poste4-eth0.200 type vlan id 200
+ip netns exec poste4 ip link set dev poste4-eth0.200 up
+
+#lancement du dhcp:
+ip netns exec rout1 dnsmasq -d -z -i tunnel.100 --except-interface=lo -F 192.168.100.0,192.168.100.200,255.255.255.0 &
+clear
+ip netns exec rout1 dnsmasq -d -z -i tunnel.200 --except-interface=lo -F 192.168.200.0,192.168.200.200,255.255.255.0 &
+clear
